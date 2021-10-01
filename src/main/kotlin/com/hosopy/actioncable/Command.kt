@@ -3,7 +3,11 @@ package com.hosopy.actioncable
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.json
 
-internal data class Command(private val command: String, private val identifier: String, private val data: Map<String, Any?> = mapOf()) {
+internal data class Command(
+    private val command: String,
+    private val identifier: String,
+    private val data: Map<String, Any?> = mapOf()
+) {
 
     companion object {
         fun subscribe(identifier: String) = Command("subscribe", identifier)

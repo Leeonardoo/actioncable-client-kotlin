@@ -4,7 +4,7 @@ typealias ConnectedHandler = () -> Unit
 typealias RejectedHandler = () -> Unit
 typealias ReceivedHandler = (data: Any?) -> Unit
 typealias DisconnectedHandler = () -> Unit
-typealias FailedHandler = (e: Exception) -> Unit
+typealias FailedHandler = (e: Throwable) -> Unit
 
 /**
  * Subscription provides a number of callbacks and a method for calling remote procedure calls
@@ -51,13 +51,23 @@ class Subscription internal constructor(private val consumer: Consumer, channel:
         consumer.send(Command.message(identifier, data))
     }
 
-    internal fun notifyConnected() { onConnected?.invoke() }
+    internal fun notifyConnected() {
+        onConnected?.invoke()
+    }
 
-    internal fun notifyRejected() { onRejected?.invoke() }
+    internal fun notifyRejected() {
+        onRejected?.invoke()
+    }
 
-    internal fun notifyReceived(data: Any?) { onReceived?.invoke(data) }
+    internal fun notifyReceived(data: Any?) {
+        onReceived?.invoke(data)
+    }
 
-    internal fun notifyDisconnected() { onDisconnected?.invoke() }
+    internal fun notifyDisconnected() {
+        onDisconnected?.invoke()
+    }
 
-    internal fun notifyFailed(error: Exception) { onFailed?.invoke(error) }
+    internal fun notifyFailed(error: Throwable) {
+        onFailed?.invoke(error)
+    }
 }

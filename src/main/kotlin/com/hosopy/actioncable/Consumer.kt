@@ -39,12 +39,11 @@ class Consumer internal constructor(uri: URI, options: Options = Options()) {
 
     init {
         connection.onOpen = {
-        
+
         }
 
         connection.onMessage = { jsonString ->
-            Message.createFromJsonString(jsonString)?.let {
-                (type, identifier, body) ->
+            Message.createFromJsonString(jsonString)?.let { (type, identifier, body) ->
                 when (type) {
                     Message.Type.WELCOME -> {
                         connectionMonitor.recordConnect()
@@ -54,7 +53,8 @@ class Consumer internal constructor(uri: URI, options: Options = Options()) {
                     Message.Type.CONFIRMATION -> subscriptions.notifyConnected(identifier!!)
                     Message.Type.REJECTION -> subscriptions.reject(identifier!!)
                     Message.Type.MESSAGE -> subscriptions.notifyReceived(identifier!!, body)
-                    Message.Type.DISCONNECT -> {}
+                    Message.Type.DISCONNECT -> {
+                    }
                 }
             }
         }

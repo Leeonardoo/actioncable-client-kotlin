@@ -8,10 +8,12 @@ import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.min
 
 private const val STALE_THRESHOLD = 6
 
-internal class ConnectionMonitor(private val connection: Connection, private val options: Connection.Options) : CoroutineScope {
+internal class ConnectionMonitor(private val connection: Connection, private val options: Connection.Options) :
+    CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + job
@@ -29,10 +31,10 @@ internal class ConnectionMonitor(private val connection: Connection, private val
     private val interval: Long
         get() {
             return Math.max(
-                    options.reconnectionDelay, Math.min(
+                options.reconnectionDelay, min(
                     options.reconnectionDelayMax,
                     (5.0 * Math.log((reconnectAttempts + 1).toDouble())).toInt()
-            )
+                )
             ) * 1000L
         }
 
@@ -83,7 +85,6 @@ internal class ConnectionMonitor(private val connection: Connection, private val
     }
 
     private fun reset() {
-
         reconnectAttempts = 0
     }
 

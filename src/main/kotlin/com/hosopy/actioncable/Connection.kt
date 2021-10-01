@@ -1,35 +1,27 @@
 package com.hosopy.actioncable
 
-import com.squareup.okhttp.OkHttpClient
-import com.squareup.okhttp.Request
-import com.squareup.okhttp.RequestBody
-import com.squareup.okhttp.Response
-import com.squareup.okhttp.ResponseBody
-import com.squareup.okhttp.ws.WebSocket
-import com.squareup.okhttp.ws.WebSocketCall
-import com.squareup.okhttp.ws.WebSocketListener
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.actor
-import okio.Buffer
+import okhttp3.*
 import java.io.IOException
-import java.net.CookieHandler
 import java.net.URI
 import java.net.URLEncoder
 import java.util.concurrent.Executors
 import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.X509TrustManager
 import kotlin.coroutines.CoroutineContext
 
 typealias OkHttpClientFactory = () -> OkHttpClient
-
 
 class Connection internal constructor(private val uri: URI, private val options: Options) {
     /**
      * Options for connection.
      *
-     * @property sslContext SSLContext
+     * @property sslSocketFactory SSLSocketFactory
+     * @property trustManager X509TrustManager
      * @property hostnameVerifier HostnameVerifier
-     * @property cookieHandler CookieHandler
+     * @property cookieJar CookieJar
      * @property query Query parameters to send on handshake.
      * @property headers HTTP Headers to send on handshake.
      * @property reconnection Whether to reconnect automatically. If reconnection is true, the client attempts to reconnect to the server when underlying connection is stale.
@@ -39,16 +31,17 @@ class Connection internal constructor(private val uri: URI, private val options:
      * @property okHttpClientFactory To use your own OkHttpClient, set this option.
      */
     data class Options(
-            var sslContext: SSLContext? = null,
-            var hostnameVerifier: HostnameVerifier? = null,
-            var cookieHandler: CookieHandler? = null,
-            var query: Map<String, String>? = null,
-            var headers: Map<String, String>? = null,
-            var reconnection: Boolean = false,
-            var reconnectionMaxAttempts: Int = 30,
-            var reconnectionDelay: Int = 3,
-            var reconnectionDelayMax: Int = 30,
-            var okHttpClientFactory: OkHttpClientFactory? = null
+        var sslSocketFactory: SSLSocketFactory? = null,
+        var trustManager: X509TrustManager? = null,
+        var hostnameVerifier: HostnameVerifier? = null,
+        var cookieJar: CookieJar? = null,
+        var query: Map<String, String>? = null,
+        var headers: Map<String, String>? = null,
+        var reconnection: Boolean = false,
+        var reconnectionMaxAttempts: Int = 30,
+        var reconnectionDelay: Int = 3,
+        var reconnectionDelayMax: Int = 30,
+        var okHttpClientFactory: OkHttpClientFactory? = null
     )
 
     private enum class State {
@@ -61,12 +54,12 @@ class Connection internal constructor(private val uri: URI, private val options:
     internal var onOpen: () -> Unit = {}
     internal var onMessage: (jsonString: String) -> Unit = {}
     internal var onClose: () -> Unit = {}
-    internal var onFailure: (e: Exception) -> Unit = {}
+    internal var onFailure: (t: Throwable) -> Unit = {}
 
     private var state = State.CONNECTING
 
     private var webSocket: WebSocket? = null
-    
+
     @ObsoleteCoroutinesApi
     private val operationQueue = SerializedOperationQueue()
 
@@ -132,9 +125,11 @@ class Connection internal constructor(private val uri: URI, private val options:
 
         val client = options.okHttpClientFactory?.invoke() ?: OkHttpClient()
 
-        options.sslContext?.let { client.sslSocketFactory = it.socketFactory }
-        options.hostnameVerifier?.let { client.hostnameVerifier = it }
-        options.cookieHandler?.let { client.cookieHandler = it }
+        client.newBuilder().apply {
+            options.sslSocketFactory?.let { sslSocketFactory(it, options.trustManager ?: return) }
+            options.hostnameVerifier?.let { hostnameVerifier(it) }
+            options.cookieJar?.let { cookieJar(it) }
+        }
 
         val urlBuilder = StringBuilder(uri.toString())
 
@@ -146,16 +141,14 @@ class Connection internal constructor(private val uri: URI, private val options:
 
         val request = requestBuilder.build()
 
-        val webSocketCall = WebSocketCall.create(client, request)
-        webSocketCall.enqueue(webSocketListener)
-
+        client.newWebSocket(request, webSocketListener)
         client.dispatcher.executorService.shutdown()
     }
 
     private fun doSend(data: String) {
         webSocket?.let { webSocket ->
             try {
-                webSocket.sendMessage(RequestBody.create(WebSocket.TEXT, data))
+                webSocket.send(data)
             } catch (e: IOException) {
                 fireOnFailure(e)
             }
@@ -167,36 +160,29 @@ class Connection internal constructor(private val uri: URI, private val options:
     }
 
     @ObsoleteCoroutinesApi
-    private val webSocketListener = object : WebSocketListener {
-        override fun onOpen(openedWebSocket: WebSocket?, response: Response?) {
+    private val webSocketListener = object : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
             state = State.OPEN
-            webSocket = openedWebSocket
+            this@Connection.webSocket = webSocket
             operationQueue.push {
                 onOpen.invoke()
             }
         }
 
-        override fun onFailure(e: IOException?, response: Response?) {
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             operationQueue.push {
                 state = State.CLOSED
-                onFailure.invoke(e ?: RuntimeException("Unexpected error"))
+                onFailure.invoke(t)
             }
         }
 
-        override fun onMessage(message: ResponseBody?) {
-            message?.also {
-                it.source()?.readUtf8()?.also { text ->
-                    operationQueue.push {
-                        onMessage.invoke(text)
-                    }
-                }
-            }?.close()
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            operationQueue.push {
+                onMessage.invoke(text)
+            }
         }
 
-        override fun onPong(payload: Buffer?) {}
-
-        override fun onClose(code: Int, reason: String?) {
-            println("WebSocket#onClose")
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             state = State.CLOSED
             operationQueue.push {
                 state = State.CLOSED
