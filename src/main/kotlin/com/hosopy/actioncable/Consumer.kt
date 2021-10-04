@@ -39,6 +39,7 @@ class Consumer internal constructor(uri: URI, options: Options = Options()) {
 
     init {
         connection.onOpen = {
+            options.connection.onConnectionOpened()
         }
 
         connection.onMessage = { jsonString ->
@@ -61,10 +62,12 @@ class Consumer internal constructor(uri: URI, options: Options = Options()) {
         connection.onClose = {
             subscriptions.notifyDisconnected()
             connectionMonitor.recordDisconnect()
+            options.connection.onConnectionClosed()
         }
 
         connection.onFailure = { error ->
             subscriptions.notifyFailed(error)
+            options.connection.onConnectionFail(error)
         }
     }
 

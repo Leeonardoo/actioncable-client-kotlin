@@ -42,7 +42,11 @@ class Connection internal constructor(private val uri: URI, private val options:
         var reconnectionDelay: Int = 3,
         var reconnectionDelayMax: Int = 30,
         var okHttpClientFactory: OkHttpClientFactory? = null,
-        var bufferSize: Int = 10
+        var bufferSize: Int = 10,
+
+        var onConnectionOpened: () -> Unit = {},
+        var onConnectionClosed: () -> Unit = {},
+        var onConnectionFail: (Throwable) -> Unit = {}
     )
 
     private enum class State {
