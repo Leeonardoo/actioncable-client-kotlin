@@ -1,6 +1,5 @@
 package com.hosopy.actioncable
 
-import kotlinx.coroutines.ObsoleteCoroutinesApi
 import java.net.URI
 
 /**
@@ -35,11 +34,11 @@ class Consumer internal constructor(uri: URI, options: Options = Options()) {
 
     private val connection: Connection = Connection(uri, options.connection)
 
-    private val connectionMonitor: ConnectionMonitor = ConnectionMonitor(connection, options.connection)
+    private val connectionMonitor: ConnectionMonitor =
+        ConnectionMonitor(connection, options.connection)
 
     init {
         connection.onOpen = {
-
         }
 
         connection.onMessage = { jsonString ->
@@ -72,7 +71,6 @@ class Consumer internal constructor(uri: URI, options: Options = Options()) {
     /**
      * Establish connection.
      */
-    @ObsoleteCoroutinesApi
     fun connect() {
         connection.open()
         connectionMonitor.start()
@@ -81,12 +79,10 @@ class Consumer internal constructor(uri: URI, options: Options = Options()) {
     /**
      * Disconnect the underlying connection.
      */
-    @ObsoleteCoroutinesApi
     fun disconnect() {
         connection.close()
         connectionMonitor.stop()
     }
 
-    @ObsoleteCoroutinesApi
     internal fun send(command: Command) = connection.send(command.toJsonString())
 }

@@ -41,7 +41,8 @@ class Connection internal constructor(private val uri: URI, private val options:
         var reconnectionMaxAttempts: Int = 30,
         var reconnectionDelay: Int = 3,
         var reconnectionDelayMax: Int = 30,
-        var okHttpClientFactory: OkHttpClientFactory? = null
+        var okHttpClientFactory: OkHttpClientFactory? = null,
+        var bufferSize: Int = 10
     )
 
     private enum class State {
@@ -60,12 +61,10 @@ class Connection internal constructor(private val uri: URI, private val options:
 
     private var webSocket: WebSocket? = null
 
-    @ObsoleteCoroutinesApi
-    private val operationQueue = SerializedOperationQueue()
+    private val operationQueue = SerializedOperationQueue(options.bufferSize)
 
     private var isReopening = false
 
-    @ObsoleteCoroutinesApi
     internal fun open() {
         operationQueue.push {
             if (isOpen()) {
@@ -76,7 +75,6 @@ class Connection internal constructor(private val uri: URI, private val options:
         }
     }
 
-    @ObsoleteCoroutinesApi
     internal fun close() {
         operationQueue.push {
             webSocket?.let { webSocket ->
@@ -94,7 +92,6 @@ class Connection internal constructor(private val uri: URI, private val options:
         }
     }
 
-    @ObsoleteCoroutinesApi
     internal fun reopen() {
         if (isState(State.CLOSED)) {
             open()
@@ -104,7 +101,6 @@ class Connection internal constructor(private val uri: URI, private val options:
         }
     }
 
-    @ObsoleteCoroutinesApi
     internal fun send(data: String): Boolean {
         if (!isOpen()) return false
 
@@ -119,7 +115,6 @@ class Connection internal constructor(private val uri: URI, private val options:
 
     private fun isOpen() = webSocket?.let { isState(State.OPEN) } ?: false
 
-    @ObsoleteCoroutinesApi
     private fun doOpen() {
         state = State.CONNECTING
 
@@ -159,7 +154,6 @@ class Connection internal constructor(private val uri: URI, private val options:
         onFailure.invoke(error)
     }
 
-    @ObsoleteCoroutinesApi
     private val webSocketListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             state = State.OPEN
@@ -198,14 +192,15 @@ class Connection internal constructor(private val uri: URI, private val options:
     }
 }
 
-@ObsoleteCoroutinesApi
 private class SerializedOperationQueue(capacity: Int = 0) : CoroutineScope {
     val job = Job()
+
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Unconfined + job
 
     private val singleThreadContext = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
+    @OptIn(ObsoleteCoroutinesApi::class)
     private val actor = actor<suspend () -> Unit>(singleThreadContext, capacity) {
         for (operation in channel) {
             operation.invoke()
@@ -213,7 +208,7 @@ private class SerializedOperationQueue(capacity: Int = 0) : CoroutineScope {
     }
 
     fun push(operation: suspend () -> Unit) = launch {
-        actor.send(operation)
+        actor.trySend(operation)
     }
 }
 

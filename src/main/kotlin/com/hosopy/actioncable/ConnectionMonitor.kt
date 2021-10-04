@@ -1,18 +1,17 @@
 package com.hosopy.actioncable
 
-
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.ObsoleteCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.ln
+import kotlin.math.max
 import kotlin.math.min
 
 private const val STALE_THRESHOLD = 6
 
-internal class ConnectionMonitor(private val connection: Connection, private val options: Connection.Options) :
+internal class ConnectionMonitor(
+    private val connection: Connection,
+    private val options: Connection.Options
+) :
     CoroutineScope {
     private val job = Job()
     override val coroutineContext: CoroutineContext
@@ -30,10 +29,10 @@ internal class ConnectionMonitor(private val connection: Connection, private val
 
     private val interval: Long
         get() {
-            return Math.max(
+            return max(
                 options.reconnectionDelay, min(
                     options.reconnectionDelayMax,
-                    (5.0 * Math.log((reconnectAttempts + 1).toDouble())).toInt()
+                    (5.0 * ln((reconnectAttempts + 1).toDouble())).toInt()
                 )
             ) * 1000L
         }
@@ -58,7 +57,6 @@ internal class ConnectionMonitor(private val connection: Connection, private val
         pingedAt = now()
     }
 
-    @ObsoleteCoroutinesApi
     internal fun start() {
         reset()
         stoppedAt = 0L
@@ -71,7 +69,6 @@ internal class ConnectionMonitor(private val connection: Connection, private val
         stoppedAt = now()
     }
 
-    @ObsoleteCoroutinesApi
     private fun poll() {
         launch {
             delay(interval)
@@ -90,7 +87,6 @@ internal class ConnectionMonitor(private val connection: Connection, private val
 
     private fun now(): Long = System.currentTimeMillis()
 
-    @ObsoleteCoroutinesApi
     private fun reconnectIfStale() {
         if (options.reconnection && connectionIsStale && reconnectAttempts < options.reconnectionMaxAttempts) {
             reconnectAttempts++
