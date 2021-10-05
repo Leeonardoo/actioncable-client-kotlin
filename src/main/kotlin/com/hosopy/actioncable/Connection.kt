@@ -125,7 +125,11 @@ class Connection internal constructor(private val uri: URI, private val options:
         val client = options.okHttpClientFactory?.invoke() ?: OkHttpClient()
 
         client.newBuilder().apply {
-            options.sslSocketFactory?.let { sslSocketFactory(it, options.trustManager ?: return) }
+            val socketFactory = options.sslSocketFactory
+            val trustManager = options.trustManager
+            if (socketFactory != null && trustManager != null) {
+                sslSocketFactory(socketFactory, trustManager)
+            }
             options.hostnameVerifier?.let { hostnameVerifier(it) }
             options.cookieJar?.let { cookieJar(it) }
         }
