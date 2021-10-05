@@ -145,7 +145,6 @@ class Connection internal constructor(private val uri: URI, private val options:
         val request = requestBuilder.build()
 
         client.newWebSocket(request, webSocketListener)
-        client.dispatcher.executorService.shutdown()
     }
 
     private fun doSend(data: String) {
