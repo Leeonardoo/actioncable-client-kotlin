@@ -23,6 +23,7 @@ class Subscriptions internal constructor(private val consumer: Consumer) {
      */
     fun create(channel: Channel): Subscription = Subscription(consumer, channel).also {
         subscriptions[channel.identifier] = it
+        sendSubscribeCommand(it)
     }
 
     /**
