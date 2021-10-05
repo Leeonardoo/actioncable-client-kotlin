@@ -13,7 +13,7 @@ package com.hosopy.actioncable
  */
 class Subscriptions internal constructor(private val consumer: Consumer) {
 
-    private val subscriptions = mutableListOf<Subscription>()
+    private val subscriptions = hashMapOf<String, Subscription>()
 
     /**
      * Create [Subscription] instance.
@@ -22,7 +22,7 @@ class Subscriptions internal constructor(private val consumer: Consumer) {
      * @return Subscription instance
      */
     fun create(channel: Channel): Subscription = Subscription(consumer, channel).also {
-        subscriptions.add(it)
+        subscriptions[channel.identifier] = it
     }
 
     /**
@@ -31,37 +31,47 @@ class Subscriptions internal constructor(private val consumer: Consumer) {
      * @param subscription instance to remove
      */
     fun remove(subscription: Subscription) {
-        if (subscriptions.remove(subscription)) {
+        if (subscriptions.remove(subscription.identifier) != null) {
             consumer.send(Command.unsubscribe(subscription.identifier))
         }
     }
 
-    fun contains(subscription: Subscription) = subscriptions.contains(subscription)
+    fun remove(channel: Channel) {
+        if (subscriptions.remove(channel.identifier) != null) {
+            consumer.send(Command.unsubscribe(channel.identifier))
+        }
+    }
+
+    fun contains(subscription: Subscription) = subscriptions.containsKey(subscription.identifier)
+
+    fun contains(channel: Channel) = subscriptions.containsKey(channel.identifier)
 
     internal fun reload() {
-        subscriptions.forEach { sendSubscribeCommand(it) }
+        subscriptions.forEach { sendSubscribeCommand(it.value) }
     }
 
     internal fun notifyConnected(identifier: String) {
-        subscriptions.filter { it.identifier == identifier }.forEach { it.notifyConnected() }
+        subscriptions.filter { it.key == identifier }.forEach { it.value.notifyConnected() }
     }
 
     internal fun notifyDisconnected() {
-        subscriptions.forEach { it.notifyDisconnected() }
+        subscriptions.forEach { it.value.notifyDisconnected() }
     }
 
     internal fun notifyReceived(identifier: String, data: Any?) {
-        subscriptions.filter { it.identifier == identifier }.forEach { it.notifyReceived(data) }
+        subscriptions.filter { it.key == identifier }.forEach { it.value.notifyReceived(data) }
     }
 
     internal fun notifyFailed(error: Throwable) {
-        subscriptions.forEach { it.notifyFailed(error) }
+        subscriptions.forEach { it.value.notifyFailed(error) }
     }
 
     internal fun reject(identifier: String) {
-        val removal = subscriptions.filter { it.identifier == identifier }
-        subscriptions.removeAll(removal)
-        removal.forEach { it.notifyRejected() }
+        val removal = subscriptions.filter { it.value.identifier == identifier }
+        removal.forEach {
+            subscriptions.remove(it.key)
+        }
+        removal.forEach { it.value.notifyRejected() }
     }
 
     private fun sendSubscribeCommand(subscription: Subscription) {

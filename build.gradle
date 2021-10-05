@@ -29,7 +29,7 @@ apply plugin: 'maven-publish'
 project.ext {
     groupId = 'com.github.leeonardoo'
     artifactId = 'actioncable-client-kotlin'
-    libVersion = '0.0.14'
+    libVersion = '0.0.15'
 }
 
 version = project.libVersion
