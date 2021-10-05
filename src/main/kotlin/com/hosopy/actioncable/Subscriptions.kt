@@ -46,6 +46,8 @@ class Subscriptions internal constructor(private val consumer: Consumer) {
 
     fun contains(channel: Channel) = subscriptions.containsKey(channel.identifier)
 
+    fun get(channel: Channel) = subscriptions[channel.identifier]
+
     internal fun reload() {
         subscriptions.forEach { sendSubscribeCommand(it.value) }
     }
