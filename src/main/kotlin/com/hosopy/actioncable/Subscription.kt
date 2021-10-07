@@ -2,11 +2,10 @@ package com.hosopy.actioncable
 
 typealias ConnectedHandler = () -> Unit
 typealias RejectedHandler = () -> Unit
-typealias ReceivedHandler = (data: String?) -> Unit
+typealias ReceivedHandler = (data: Any?) -> Unit
 typealias DisconnectedHandler = () -> Unit
 typealias FailedHandler = (e: Throwable) -> Unit
 
-//TODO replace Klaxon with Moshi codegen
 /**
  * Subscription provides a number of callbacks and a method for calling remote procedure calls
  * on the corresponding Channel instance on the server side.
@@ -60,7 +59,7 @@ class Subscription internal constructor(private val consumer: Consumer, channel:
         onRejected?.invoke()
     }
 
-    internal fun notifyReceived(data: String?) {
+    internal fun notifyReceived(data: Any?) {
         onReceived?.invoke(data)
     }
 

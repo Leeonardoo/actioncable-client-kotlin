@@ -61,7 +61,7 @@ class Subscriptions internal constructor(private val consumer: Consumer) {
         subscriptions.forEach { it.value.notifyDisconnected() }
     }
 
-    internal fun notifyReceived(identifier: String, data: String?) {
+    internal fun notifyReceived(identifier: String, data: Any?) {
         subscriptions.filter { it.key == identifier }.forEach { it.value.notifyReceived(data) }
     }
 
