@@ -3,7 +3,7 @@ package com.hosopy.actioncable
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 
-internal data class Message(val type: Type, val identifier: String?, val body: Any?) {
+internal data class Message(val type: Type, val identifier: String?, val body: String?) {
 
     enum class Type(val typeString: String?) {
         WELCOME("welcome"),
@@ -23,7 +23,7 @@ internal data class Message(val type: Type, val identifier: String?, val body: A
                     Type.values().first { it.typeString == typeString }
                 } ?: Type.MESSAGE
                 val identifier = json.string("identifier")
-                val body = json["message"]
+                val body = json.string("message")
 
                 Message(type, identifier, body)
             }
