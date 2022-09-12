@@ -1,5 +1,7 @@
 package com.hosopy.actioncable
 
+import java.util.concurrent.ConcurrentHashMap
+
 /**
  * Collection class for creating (and internally managing) channel subscriptions.
  *
@@ -13,7 +15,7 @@ package com.hosopy.actioncable
  */
 class Subscriptions internal constructor(private val consumer: Consumer) {
 
-    private val subscriptions = hashMapOf<String, Subscription>()
+    private val subscriptions = ConcurrentHashMap<String, Subscription>()
 
     /**
      * Create [Subscription] instance.
