@@ -1,18 +1,15 @@
 package com.hosopy.actioncable
 
-import com.squareup.okhttp.Response
-import com.squareup.okhttp.ResponseBody
-import com.squareup.okhttp.mockwebserver.MockResponse
-import com.squareup.okhttp.mockwebserver.MockWebServer
-import com.squareup.okhttp.ws.WebSocket
-import com.squareup.okhttp.ws.WebSocketListener
 import kotlinx.coroutines.Dispatchers.Unconfined
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import okio.Buffer
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.Test
-import java.io.IOException
 import java.net.URI
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -44,7 +41,7 @@ class ConsumerTest {
 
         val mockWebServer = MockWebServer()
         val mockResponse = MockResponse().withWebSocketUpgrade(object : DefaultWebSocketListener() {
-            override fun onOpen(webSocket: WebSocket?, response: Response?) {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
                 launch(Unconfined) {
                     events.send("onOpen")
                 }
@@ -53,7 +50,7 @@ class ConsumerTest {
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val consumer = ActionCable.createConsumer(URI(mockWebServer.url("/").uri().toString()))
+        val consumer = ActionCable.createConsumer(URI(mockWebServer.url("/").toUri().toString()))
         consumer.connect()
 
         assertEquals("onOpen", events.receive())
@@ -67,22 +64,19 @@ class ConsumerTest {
 
         val mockWebServer = MockWebServer()
         val mockResponse = MockResponse().withWebSocketUpgrade(object : DefaultWebSocketListener() {
-            override fun onOpen(webSocket: WebSocket?, response: Response?) {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
                 launch(Unconfined) {
                     events.send("onOpen")
                 }
             }
 
-            override fun onClose(code: Int, reason: String?) {
-                launch(Unconfined) {
-                    events.send("onClose")
-                }
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             }
         })
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val consumer = ActionCable.createConsumer(URI(mockWebServer.url("/").uri().toString()))
+        val consumer = ActionCable.createConsumer(URI(mockWebServer.url("/").toUri().toString()))
         consumer.connect()
 
         assertEquals("onOpen", events.receive())
@@ -100,52 +94,48 @@ class ConsumerTest {
 
         val mockWebServer = MockWebServer()
         val mockResponse = MockResponse().withWebSocketUpgrade(object : DefaultWebSocketListener() {
-            override fun onOpen(webSocket: WebSocket?, response: Response?) {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
                 launch(Unconfined) {
                     events.send("onOpen")
                 }
             }
 
-            override fun onMessage(message: ResponseBody?) {
-                message?.also {
-                    it.source()?.readUtf8()?.also { text ->
-                        launch(Unconfined) {
-                            events.send("onMessage:$text")
-                        }
-                    }
-                }?.close()
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                launch(Unconfined) {
+                    events.send("onMessage:$text")
+                }
             }
         })
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val consumer = ActionCable.createConsumer(URI(mockWebServer.url("/").uri().toString()))
+        val consumer = ActionCable.createConsumer(URI(mockWebServer.url("/").toUri().toString()))
         consumer.connect()
 
         assertEquals("onOpen", events.receive())
 
         consumer.send(Command.subscribe("identifier"))
 
-        assertEquals("onMessage:{\"command\":\"subscribe\",\"identifier\":\"identifier\"}", events.receive())
+        assertEquals(
+            "onMessage:{\"command\":\"subscribe\",\"identifier\":\"identifier\"}",
+            events.receive()
+        )
 
         mockWebServer.shutdown()
     }
 
 
-    private open class DefaultWebSocketListener : WebSocketListener {
-        override fun onOpen(webSocket: WebSocket?, response: Response?) {
+    private open class DefaultWebSocketListener : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
         }
 
-        override fun onFailure(e: IOException?, response: Response?) {
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
         }
 
-        override fun onMessage(message: ResponseBody?) {
+        override fun onMessage(webSocket: WebSocket, text: String) {
         }
 
-        override fun onPong(payload: Buffer?) {
-        }
-
-        override fun onClose(code: Int, reason: String?) {
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
         }
     }
 }

@@ -1,19 +1,15 @@
 package com.hosopy.actioncable
 
-import com.squareup.okhttp.RequestBody
-import com.squareup.okhttp.Response
-import com.squareup.okhttp.ResponseBody
-import com.squareup.okhttp.mockwebserver.MockResponse
-import com.squareup.okhttp.mockwebserver.MockWebServer
-import com.squareup.okhttp.ws.WebSocket
-import com.squareup.okhttp.ws.WebSocketListener
 import kotlinx.coroutines.Dispatchers.Unconfined
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import okio.Buffer
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.Test
-import java.io.IOException
 import java.net.URI
 import kotlin.test.assertEquals
 
@@ -29,31 +25,28 @@ class SubscriptionsTest {
         val mockResponse = MockResponse().withWebSocketUpgrade(object : DefaultWebSocketListener() {
             private var currentWebSocket: WebSocket? = null
 
-            override fun onOpen(webSocket: WebSocket?, response: Response?) {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
                 currentWebSocket = webSocket
                 // send welcome message
                 launch(Unconfined) {
-                    currentWebSocket?.sendMessage(RequestBody.create(WebSocket.TEXT, "{\"type\":\"welcome\"}"))
+                    currentWebSocket?.send("{\"type\":\"welcome\"}")
                 }
             }
 
-            override fun onMessage(message: ResponseBody?) {
-                message?.also {
-                    val text = it.source()?.readUtf8()!!
-                    if (text.contains("subscribe")) {
-                        // accept subscribe command
-                        launch(Unconfined) {
-                            currentWebSocket?.sendMessage(RequestBody.create(WebSocket.TEXT, "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"confirm_subscription\"}"))
-                        }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (text.contains("subscribe")) {
+                    // accept subscribe command
+                    launch(Unconfined) {
+                        currentWebSocket?.send("{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"confirm_subscription\"}")
                     }
-                }?.close()
+                }
             }
         })
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
         val channel = Channel("CommentsChannel")
-        val consumer = Consumer(URI(mockWebServer.url("/").uri().toString()))
+        val consumer = Consumer(URI(mockWebServer.url("/").toUri().toString()))
 
         consumer.connect()
 
@@ -77,34 +70,31 @@ class SubscriptionsTest {
         val mockResponse = MockResponse().withWebSocketUpgrade(object : DefaultWebSocketListener() {
             private var currentWebSocket: WebSocket? = null
 
-            override fun onOpen(webSocket: WebSocket?, response: Response?) {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
                 currentWebSocket = webSocket
                 // send welcome message
                 launch(Unconfined) {
-                    currentWebSocket?.sendMessage(RequestBody.create(WebSocket.TEXT, "{\"type\":\"welcome\"}"))
+                    currentWebSocket?.send("{\"type\":\"welcome\"}")
                 }
             }
 
-            override fun onMessage(message: ResponseBody?) {
-                message?.also {
-                    val text = it.source()?.readUtf8()!!
-                    if (text.contains("unsubscribe")) {
-                        launch(Unconfined) {
-                            events.send(text)
-                        }
-                    } else if (text.contains("subscribe")) {
-                        // accept subscribe command
-                        launch(Unconfined) {
-                            currentWebSocket?.sendMessage(RequestBody.create(WebSocket.TEXT, "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"confirm_subscription\"}"))
-                        }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (text.contains("unsubscribe")) {
+                    launch(Unconfined) {
+                        events.send(text)
                     }
-                }?.close()
+                } else if (text.contains("subscribe")) {
+                    // accept subscribe command
+                    launch(Unconfined) {
+                        currentWebSocket?.send("{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"confirm_subscription\"}")
+                    }
+                }
             }
         })
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val consumer = Consumer(URI(mockWebServer.url("/").uri().toString()))
+        val consumer = Consumer(URI(mockWebServer.url("/").toUri().toString()))
         val subscription1 = consumer.subscriptions.create(Channel("CommentsChannel"))
         val subscription2 = consumer.subscriptions.create(Channel("NotificationChannel"))
 
@@ -129,25 +119,25 @@ class SubscriptionsTest {
 
         assertEquals(false, consumer.subscriptions.contains(subscription1))
         assertEquals(true, consumer.subscriptions.contains(subscription2))
-        assertEquals("{\"command\":\"unsubscribe\",\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\"}", events.receive())
+        assertEquals(
+            "{\"command\":\"unsubscribe\",\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\"}",
+            events.receive()
+        )
 
         mockWebServer.shutdown()
     }
 
-    private open class DefaultWebSocketListener : WebSocketListener {
-        override fun onOpen(webSocket: WebSocket?, response: Response?) {
+    private open class DefaultWebSocketListener : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
         }
 
-        override fun onFailure(e: IOException?, response: Response?) {
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
         }
 
-        override fun onMessage(message: ResponseBody?) {
+        override fun onMessage(webSocket: WebSocket, text: String) {
         }
 
-        override fun onPong(payload: Buffer?) {
-        }
-
-        override fun onClose(code: Int, reason: String?) {
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
         }
     }
 }

@@ -1,19 +1,15 @@
 package com.hosopy.actioncable
 
-import com.squareup.okhttp.RequestBody
-import com.squareup.okhttp.Response
-import com.squareup.okhttp.ResponseBody
-import com.squareup.okhttp.mockwebserver.MockResponse
-import com.squareup.okhttp.mockwebserver.MockWebServer
-import com.squareup.okhttp.ws.WebSocket
-import com.squareup.okhttp.ws.WebSocketListener
 import kotlinx.coroutines.Dispatchers.Unconfined
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import okio.Buffer
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.Test
-import java.io.IOException
 import java.net.URI
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -36,7 +32,8 @@ class ConnectionTest {
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val connection = Connection(URI(mockWebServer.url("/").uri().toString()), Connection.Options())
+        val connection =
+            Connection(URI(mockWebServer.url("/").toUri().toString()), Connection.Options())
         connection.onOpen = {
             launch(Unconfined) {
                 events.send("onOpen")
@@ -55,14 +52,15 @@ class ConnectionTest {
 
         val mockWebServer = MockWebServer()
         val mockResponse = MockResponse().withWebSocketUpgrade(object : DefaultWebSocketListener() {
-            override fun onOpen(webSocket: WebSocket?, response: Response?) {
-                webSocket?.sendMessage(RequestBody.create(WebSocket.TEXT, "{}"))
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                webSocket.send("{}")
             }
         })
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val connection = Connection(URI(mockWebServer.url("/").uri().toString()), Connection.Options())
+        val connection =
+            Connection(URI(mockWebServer.url("/").toUri().toString()), Connection.Options())
         connection.onMessage = { text ->
             launch(Unconfined) {
                 events.send("onMessage:$text")
@@ -85,7 +83,8 @@ class ConnectionTest {
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val connection = Connection(URI(mockWebServer.url("/").uri().toString()), Connection.Options())
+        val connection =
+            Connection(URI(mockWebServer.url("/").toUri().toString()), Connection.Options())
         connection.onOpen = {
             launch(Unconfined) {
                 events.send("onOpen")
@@ -113,14 +112,15 @@ class ConnectionTest {
 
         val mockWebServer = MockWebServer()
         val mockResponse = MockResponse().withWebSocketUpgrade(object : DefaultWebSocketListener() {
-            override fun onOpen(webSocket: WebSocket?, response: Response?) {
-                webSocket?.close(1000, "Reason")
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                webSocket.close(1000, "Reason")
             }
         })
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val connection = Connection(URI(mockWebServer.url("/").uri().toString()), Connection.Options())
+        val connection =
+            Connection(URI(mockWebServer.url("/").toUri().toString()), Connection.Options())
         connection.onClose = {
             launch(Unconfined) {
                 events.send("onClose")
@@ -144,7 +144,8 @@ class ConnectionTest {
         mockWebServer.enqueue(mockResponse)
         mockWebServer.start()
 
-        val connection = Connection(URI(mockWebServer.url("/").uri().toString()), Connection.Options())
+        val connection =
+            Connection(URI(mockWebServer.url("/").toUri().toString()), Connection.Options())
         connection.onFailure = {
             launch(Unconfined) {
                 events.send("onFailure")
@@ -157,20 +158,17 @@ class ConnectionTest {
         mockWebServer.shutdown()
     }
 
-    private open class DefaultWebSocketListener : WebSocketListener {
-        override fun onOpen(webSocket: WebSocket?, response: Response?) {
+    private open class DefaultWebSocketListener : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
         }
 
-        override fun onFailure(e: IOException?, response: Response?) {
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
         }
 
-        override fun onMessage(message: ResponseBody?) {
+        override fun onMessage(webSocket: WebSocket, text: String) {
         }
 
-        override fun onPong(payload: Buffer?) {
-        }
-
-        override fun onClose(code: Int, reason: String?) {
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
         }
     }
 }

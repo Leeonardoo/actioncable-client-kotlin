@@ -27,7 +27,8 @@ class MessageTest {
 
     @Test
     fun createFromJsonStringForConfirmation() {
-        val jsonString = "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"confirm_subscription\"}"
+        val jsonString =
+            "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"confirm_subscription\"}"
         val message = Message.createFromJsonString(jsonString)
 
         assertEquals(Message.Type.CONFIRMATION, message?.type)
@@ -37,29 +38,32 @@ class MessageTest {
 
     @Test
     fun createFromJsonStringForRejection() {
-        val jsonString = "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"reject_subscription\"}"
+        val jsonString =
+            "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"type\":\"reject_subscription\"}"
         val message = Message.createFromJsonString(jsonString)
 
         assertEquals(Message.Type.REJECTION, message?.type)
         assertEquals("{\"channel\":\"CommentsChannel\"}", message?.identifier)
         assertEquals(null, message?.body)
     }
-    
+
     @Test
     fun createFromJsonStringForMessage() {
-        val jsonString = "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"message\":{\"foo\":\"bar\"}}"
+        val jsonString =
+            "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"message\":{\"foo\":\"bar\"}}"
         val message = Message.createFromJsonString(jsonString)
-        
+
         assertEquals(Message.Type.MESSAGE, message?.type)
         assertEquals("{\"channel\":\"CommentsChannel\"}", message?.identifier)
         assertEquals(JsonObject(mapOf("foo" to "bar")), message?.body)
     }
-    
+
     @Test
     fun createFromJsonStringForString() {
-        val jsonString = "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"message\": \"bar\"}"
+        val jsonString =
+            "{\"identifier\":\"{\\\"channel\\\":\\\"CommentsChannel\\\"}\",\"message\": \"bar\"}"
         val message = Message.createFromJsonString(jsonString)
-        
+
         assertEquals(Message.Type.MESSAGE, message?.type)
         assertEquals("{\"channel\":\"CommentsChannel\"}", message?.identifier)
         assertEquals("bar", message?.body)

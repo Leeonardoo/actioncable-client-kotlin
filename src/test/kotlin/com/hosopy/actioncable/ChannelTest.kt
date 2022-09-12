@@ -17,7 +17,13 @@ class ChannelTest {
 
     @Test
     fun identifierWithParams() {
-        val channel = Channel("AppearanceChannel", mapOf("a" to 1, "b" to "B", "c" to false, "d" to mapOf("e" to 1)))
-        assertEquals("{\"a\":1,\"b\":\"B\",\"c\":false,\"d\":{\"e\":1},\"channel\":\"AppearanceChannel\"}", channel.identifier)
+        val channel = Channel(
+            "AppearanceChannel",
+            mapOf("a" to 1, "b" to "B", "c" to false, "d" to mapOf("e" to 1))
+        )
+        assertEquals(
+            "{\"a\":1,\"b\":\"B\",\"c\":false,\"d\":{\"e\":1},\"channel\":\"AppearanceChannel\"}",
+            channel.identifier
+        )
     }
 }

@@ -12,7 +12,8 @@ internal data class Command(
     companion object {
         fun subscribe(identifier: String) = Command("subscribe", identifier)
         fun unsubscribe(identifier: String) = Command("unsubscribe", identifier)
-        fun message(identifier: String, data: Map<String, Any?>) = Command("message", identifier, data)
+        fun message(identifier: String, data: Map<String, Any?>) =
+            Command("message", identifier, data)
     }
 
     fun toJsonString(): String {
@@ -22,7 +23,11 @@ internal data class Command(
             }.toJsonString()
         } else {
             json {
-                obj("command" to command, "identifier" to identifier, "data" to JsonObject(data).toJsonString())
+                obj(
+                    "command" to command,
+                    "identifier" to identifier,
+                    "data" to JsonObject(data).toJsonString()
+                )
             }.toJsonString()
         }
     }
